@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="theme-color" content="#1a1620"/>
+  <title>BytePad Studio v5</title>
+  <link rel="manifest" href="manifest.json" id="appManifest"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <script>if(location.protocol==='file:')document.getElementById('appManifest')?.remove();</script>
+</head>
+<body>
+  <!-- Board bar (multi-board) -->
+  <div class="board-bar" id="boardBar">
+    <label class="sr-only" for="boardSelect">Board</label>
+    <select id="boardSelect" aria-label="Board"></select>
+    <button type="button" id="btnNewBoard" class="btn btn-small">New board</button>
+    <button type="button" id="btnRenameBoard" class="btn btn-small">Rename</button>
+    <label class="sr-only" for="tagSearchInput">Search by tag</label>
+    <input type="text" id="tagSearchInput" class="tag-search-input" placeholder="Search by tag…" autocomplete="off"/>
+    <button type="button" id="tagSearchClear" class="btn btn-small" title="Clear tag filter" style="display:none">Clear</button>
+    <button type="button" id="btnSettings" class="btn btn-small" title="Settings">Settings</button>
+    <button type="button" id="btnCommandPalette" class="btn btn-small" title="Command palette (Ctrl+K)">Ctrl+K</button>
+  </div>
+  <!-- Full-width menu bar -->
+  <div class="menubar-full" role="menubar" aria-label="Menu bar">
+    <div class="menu-item" data-menu="file">
+      <span>File</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-action="new">New <span class="kbd">Ctrl+N</span></div>
+        <div class="menu-option" data-action="open">Open...</div>
+        <div class="menu-option" data-action="save">Save <span class="kbd">Ctrl+S</span></div>
+        <div class="menu-option" data-action="saveAsFile">Save as file… <span class="kbd">Ctrl+Shift+S</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="export">Export JSON...</div>
+        <div class="menu-option" data-action="exportZip">Export as ZIP with media…</div>
+        <div class="menu-option" data-action="import">Open from file… <span class="kbd">Ctrl+O</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="clear">Clear Board</div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="edit">
+      <span>Edit</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-action="undo">Undo <span class="kbd">Ctrl+Z</span></div>
+        <div class="menu-option" data-action="redo">Redo <span class="kbd">Ctrl+Y</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="cut">Cut <span class="kbd">Ctrl+X</span></div>
+        <div class="menu-option" data-action="copy">Copy <span class="kbd">Ctrl+C</span></div>
+        <div class="menu-option" data-action="paste">Paste <span class="kbd">Ctrl+V</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="delete">Delete <span class="kbd">Del</span></div>
+        <div class="menu-option" data-action="selectAll">Select All <span class="kbd">Ctrl+A</span></div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="view">
+      <span>View</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-action="zoomIn">Zoom In <span class="kbd">Ctrl++</span></div>
+        <div class="menu-option" data-action="zoomOut">Zoom Out <span class="kbd">Ctrl+-</span></div>
+        <div class="menu-option" data-action="zoomReset">Reset Zoom <span class="kbd">Ctrl+0</span></div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="snapToggle">
+          <span>Snap to Grid</span>
+          <span class="menu-check" id="snapCheck">✓</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="showAllToolbars">Show All Toolbars</div>
+        <div class="menu-option" data-action="dockLock">
+          <span>Dock Lock</span>
+          <span class="menu-check" id="dockLockCheck">✓</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-option" data-action="connectMode">Connect mode (link notes)</div>
+      </div>
+    </div>
+    <div class="menu-item" data-menu="help">
+      <span>Help</span>
+      <div class="menu-dropdown">
+        <div class="menu-option" data-action="shortcuts">Keyboard Shortcuts</div>
+        <div class="menu-option" data-action="about">About Notes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full-screen canvas stage -->
+  <div id="canvasStage" class="canvas-stage">
+    <div class="board" id="board">
+      <svg id="connectionsSvg" class="connections-layer" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <!-- Floating Dock: Templates -->
+  <div id="dockTemplates" class="dockwin" data-dock="dockTemplates">
+    <div class="dockbar">
+      <span class="docktitle">Templates</span>
+      <div class="dockcontrols">
+        <button class="dockbtn" data-action="minimize" title="Minimize">−</button>
+        <button class="dockbtn" data-action="close" title="Close">×</button>
+      </div>
+    </div>
+    <div class="dockbody">
+      <div class="chip" style="margin-bottom:8px">Drag notes onto canvas</div>
+      <div class="list" id="templatesList">
+        <div class="item" draggable="true" data-template='{"type":"note","color":"yellow","title":"Idea","text":"New idea…"}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Idea</strong><small>yellow</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"pink","title":"Task","text":"Do this next…"}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Task</strong><small>pink</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"blue","title":"Quote","text":"A line to remember…"}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Quote</strong><small>blue</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"green","title":"Win","text":"We shipped…"}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Win</strong><small>green</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"purple","title":"Note","text":"Write something…"}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Note</strong><small>purple</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="dock-divider" style="margin:8px 0; border-top:1px solid var(--border)"></div>
+        <div class="chip" style="margin-bottom:4px; font-size:10px">Structured</div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"pink","title":"Task","text":"<p><b>Task</b></p><ul><li>Do this</li><li>Then this</li></ul><p>Owner: —</p>","w":260,"h":200}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Task</strong><small>checklist + owner</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"blue","title":"Meeting","text":"<p><b>Agenda</b></p><ul><li>—</li></ul><p><b>Action items</b></p><ul><li>—</li></ul>","w":280,"h":220}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Meeting</strong><small>agenda + actions</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"green","title":"Media","text":"<p>Drop image, audio or video here.</p>","w":320,"h":200}'>
+          <div class="mini"></div>
+          <div class="meta"><strong>Media</strong><small>drop files</small></div>
+          <span class="chip drag">drag</span>
+        </div>
+      </div>
+    </div>
+    <div class="dockresize" data-resize="dockTemplates"></div>
+  </div>
+
+  <!-- Floating Dock: Tools -->
+  <div id="dockTools" class="dockwin" data-dock="dockTools">
+    <div class="dockbar">
+      <span class="docktitle">Tools</span>
+      <div class="dockcontrols">
+        <button class="dockbtn" data-action="minimize" title="Minimize">−</button>
+        <button class="dockbtn" data-action="close" title="Close">×</button>
+      </div>
+    </div>
+    <div class="dockbody">
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn small" id="undoBtn">Undo</button>
+        <button class="btn small" id="redoBtn">Redo</button>
+        <button class="btn small primary" id="newNoteBtn">New Note</button>
+      </div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
+        <button class="btn small" id="saveBoardBtn">Save</button>
+        <button class="btn small danger" id="clearBoardBtn">Clear</button>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="chip" style="margin-bottom:8px">Shortcuts</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6">
+          <div><span class="kbd">Del</span> Delete selected</div>
+          <div><span class="kbd">Esc</span> Deselect all</div>
+          <div><span class="kbd">Shift+Click</span> Multi-select</div>
+          <div><span class="kbd">Ctrl+Z</span> Undo</div>
+          <div><span class="kbd">Ctrl+Y</span> Redo</div>
+        </div>
+      </div>
+    </div>
+    <div class="dockresize" data-resize="dockTools"></div>
+  </div>
+
+  <!-- Floating Dock: Layers -->
+  <div id="dockLayers" class="dockwin" data-dock="dockLayers">
+    <div class="dockbar">
+      <span class="docktitle">Layers</span>
+      <div class="dockcontrols">
+        <button class="dockbtn" data-action="minimize" title="Minimize">−</button>
+        <button class="dockbtn" data-action="close" title="Close">×</button>
+      </div>
+    </div>
+    <div class="dockbody">
+      <div id="layersList" class="layers-list">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
+          No notes yet
+        </div>
+      </div>
+    </div>
+    <div class="dockresize" data-resize="dockLayers"></div>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Command palette -->
+  <div id="commandPalette" class="command-palette" role="dialog" aria-label="Command palette" aria-hidden="true">
+    <div class="command-palette-inner">
+      <input type="text" id="paletteInput" class="command-palette-input" placeholder="Type a command..." autocomplete="off"/>
+      <div id="paletteList" class="command-palette-list"></div>
+    </div>
+  </div>
+
+  <!-- Settings panel -->
+  <div id="settingsOverlay" class="settings-overlay" aria-hidden="true"></div>
+  <aside id="settingsPanel" class="settings-panel" aria-label="Settings">
+    <div class="settings-header">
+      <h2 class="settings-title">Settings</h2>
+      <button type="button" id="settingsClose" class="iconbtn" aria-label="Close">×</button>
+    </div>
+    <div class="settings-body">
+      <section class="settings-section">
+        <h3 class="settings-section-title">Note theme</h3>
+        <div class="settings-row">
+          <label for="defaultThemeSelect">Default note theme</label>
+          <select id="defaultThemeSelect">
+            <option value="yellow">Yellow</option>
+            <option value="pink">Pink</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="purple">Purple</option>
+            <option value="classicYellow">Classic Yellow</option>
+            <option value="whiteout">Whiteout</option>
+            <option value="smokeSilver">Smoke Silver</option>
+            <option value="blackout">Blackout</option>
+          </select>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3 class="settings-section-title">Backup</h3>
+        <div class="settings-row">
+          <button type="button" id="settingsExport" class="btn btn-small">Export JSON</button>
+          <button type="button" id="settingsImport" class="btn btn-small">Import JSON</button>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3 class="settings-section-title">Storage</h3>
+        <p id="storageInfo" class="settings-storage-info">—</p>
+      </section>
+    </div>
+  </aside>
+
+  <!-- About Modal -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>About Notes</h2>
+        <button class="modal-close" id="aboutModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="about-logo">
+          <div class="about-icon"></div>
+        </div>
+        <h3>BytePad Studio v5</h3>
+        <p class="about-version">Open canvas → OS territory</p>
+        <p class="about-description">
+          Installable (PWA), save/open as file (.bytepad), document title, cut/copy/paste, structured templates. Same open canvas with multi-board, connections, and media.
+        </p>
+        
+        <div class="about-section">
+          <h4>Features</h4>
+          <ul class="about-features">
+            <li>Installable (PWA)</li>
+            <li>Save as file / Open from file (Ctrl+O, Ctrl+Shift+S)</li>
+            <li>Multiple boards, connections, BytePadStudioExport</li>
+            <li>Cut / Copy / Paste notes</li>
+            <li>Structured templates (Task, Meeting, Media)</li>
+            <li>Command palette (Ctrl+K), themes, settings</li>
+          </ul>
+        </div>
+
+        <div class="about-section">
+          <h4>Keyboard Shortcuts</h4>
+          <div class="about-shortcuts">
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+N</span>
+              <span>New board</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+O</span>
+              <span>Open from file</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+S</span>
+              <span>Save</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+Shift+S</span>
+              <span>Save as file</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+Z</span>
+              <span>Undo</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Ctrl+Y</span>
+              <span>Redo</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Del</span>
+              <span>Delete selected</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Esc</span>
+              <span>Deselect all</span>
+            </div>
+            <div class="shortcut-row">
+              <span class="kbd">Shift+Click</span>
+              <span>Multi-select</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-section">
+          <h4>Storage</h4>
+          <p class="about-storage">
+            All data is saved locally in your browser's localStorage. No data is sent to any server.
+          </p>
+        </div>
+
+        <div class="about-footer">
+          <p>Standalone application • Zero dependencies</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function() {});
+    }
+  </script>
+</body>
+</html>
