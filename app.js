@@ -60,11 +60,85 @@
   function saveConnectionsData(boardId, connections){
     saveState('connections_' + boardId, connections);
   }
+  const THEME_DEFAULTS = {
+    defaultTheme: 'yellow',
+    canvasBgColor: 'default',
+    canvasBgImage: '',
+    canvasGlow: 'medium',
+    canvasGlowColor1: '#ff4fd8',
+    canvasGlowColor2: '#4fe3ff',
+    dockTheme: 'default'
+  };
   function loadConfig(){
-    return loadState('config', { defaultTheme: 'yellow' });
+    return loadState('config', THEME_DEFAULTS);
   }
   function saveConfig(config){
     saveState('config', config);
+  }
+
+  function hexToRgba(hex, a){
+    if(!hex || hex === '') return 'rgba(255,79,216,' + a + ')';
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if(!m) return 'rgba(255,79,216,' + a + ')';
+    return 'rgba(' + parseInt(m[1],16) + ',' + parseInt(m[2],16) + ',' + parseInt(m[3],16) + ',' + a + ')';
+  }
+
+  const CANVAS_BG_PRESETS = {
+    default: '#0b0a10',
+    darker: '#050408',
+    warm: '#1a0f14',
+    cool: '#0a0e14',
+    neutral: '#0f0f12'
+  };
+  const GLOW_OPACITY = { off: 0, subtle: 0.08, medium: 0.18, strong: 0.28 };
+  const DOCK_PRESETS = {
+    default: {
+      bg: 'rgba(18,14,30,.72)',
+      barBg: 'rgba(10,8,16,.78)',
+      border: 'rgba(255,255,255,.06)',
+      accent: 'rgba(255,79,216,.35)',
+      btnHover: 'rgba(255,79,216,.20)'
+    },
+    softer: {
+      bg: 'rgba(14,12,22,.85)',
+      barBg: 'rgba(8,6,14,.9)',
+      border: 'rgba(255,255,255,.04)',
+      accent: 'rgba(255,79,216,.25)',
+      btnHover: 'rgba(255,79,216,.12)'
+    },
+    darker: {
+      bg: 'rgba(6,5,12,.92)',
+      barBg: 'rgba(4,3,8,.95)',
+      border: 'rgba(255,255,255,.05)',
+      accent: 'rgba(255,79,216,.4)',
+      btnHover: 'rgba(255,79,216,.15)'
+    },
+    accent: {
+      bg: 'rgba(22,14,35,.82)',
+      barBg: 'rgba(18,10,28,.88)',
+      border: 'rgba(255,79,216,.12)',
+      accent: 'rgba(255,79,216,.5)',
+      btnHover: 'rgba(79,227,255,.18)'
+    }
+  };
+
+  function applyThemeConfig(){
+    const root = document.documentElement;
+    const cfg = loadConfig();
+    root.style.setProperty('--theme-canvas-bg', CANVAS_BG_PRESETS[cfg.canvasBgColor] || CANVAS_BG_PRESETS.default);
+    const bgImage = (cfg.canvasBgImage || '').trim();
+    root.style.setProperty('--theme-canvas-bg-image', bgImage ? 'url(' + bgImage + ')' : 'none');
+    const glowOp = GLOW_OPACITY[cfg.canvasGlow] !== undefined ? GLOW_OPACITY[cfg.canvasGlow] : 0.18;
+    const c1 = hexToRgba(cfg.canvasGlowColor1 || '#ff4fd8', glowOp);
+    const c2 = hexToRgba(cfg.canvasGlowColor2 || '#4fe3ff', glowOp * 0.85);
+    root.style.setProperty('--theme-canvas-glow-1', glowOp > 0 ? 'radial-gradient(1200px 700px at 20% 10%, ' + c1 + ', transparent 60%)' : 'none');
+    root.style.setProperty('--theme-canvas-glow-2', glowOp > 0 ? 'radial-gradient(1000px 600px at 80% 30%, ' + c2 + ', transparent 55%)' : 'none');
+    const dock = DOCK_PRESETS[cfg.dockTheme] || DOCK_PRESETS.default;
+    root.style.setProperty('--theme-dock-bg', dock.bg);
+    root.style.setProperty('--theme-dock-bar-bg', dock.barBg);
+    root.style.setProperty('--theme-dock-border', dock.border);
+    root.style.setProperty('--theme-dock-accent', dock.accent);
+    root.style.setProperty('--theme-dock-btn-hover', dock.btnHover);
   }
 
 
@@ -1467,6 +1541,8 @@
     connectMode = false;
     connectFrom = null;
 
+    applyThemeConfig();
+
     // Load snap state
     snapEnabled = loadState('snapEnabled', true);
     const snapCheck = document.getElementById('snapCheck');
@@ -2374,6 +2450,18 @@
       const cfg = loadConfig();
       const sel = document.getElementById('defaultThemeSelect');
       if(sel) sel.value = cfg.defaultTheme || 'yellow';
+      const canvasBgColor = document.getElementById('canvasBgColor');
+      if(canvasBgColor) canvasBgColor.value = cfg.canvasBgColor || 'default';
+      const canvasBgImage = document.getElementById('canvasBgImage');
+      if(canvasBgImage) canvasBgImage.value = cfg.canvasBgImage || '';
+      const canvasGlow = document.getElementById('canvasGlow');
+      if(canvasGlow) canvasGlow.value = cfg.canvasGlow || 'medium';
+      const canvasGlowColor1 = document.getElementById('canvasGlowColor1');
+      if(canvasGlowColor1) canvasGlowColor1.value = cfg.canvasGlowColor1 || '#ff4fd8';
+      const canvasGlowColor2 = document.getElementById('canvasGlowColor2');
+      if(canvasGlowColor2) canvasGlowColor2.value = cfg.canvasGlowColor2 || '#4fe3ff';
+      const dockTheme = document.getElementById('dockTheme');
+      if(dockTheme) dockTheme.value = cfg.dockTheme || 'default';
       const storageEl = document.getElementById('storageInfo');
       if(storageEl){
         let total = 0;
@@ -2400,6 +2488,57 @@
       saveConfig(cfg);
       const label = e.target.options[e.target.selectedIndex].text;
       toast('Default theme: ' + label + ' (new notes)');
+    });
+    function applyAndSave(cfg, msg){
+      saveConfig(cfg);
+      applyThemeConfig();
+      if(msg) toast(msg);
+    }
+    document.getElementById('canvasBgColor')?.addEventListener('change', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasBgColor = e.target.value;
+      applyAndSave(cfg, 'Canvas background updated');
+    });
+    document.getElementById('canvasBgImage')?.addEventListener('input', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasBgImage = (e.target.value || '').trim();
+      saveConfig(cfg);
+      applyThemeConfig();
+    });
+    document.getElementById('canvasBgImage')?.addEventListener('blur', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasBgImage = (e.target.value || '').trim();
+      saveConfig(cfg);
+      applyThemeConfig();
+    });
+    document.getElementById('canvasBgImageClear')?.addEventListener('click', ()=>{
+      const el = document.getElementById('canvasBgImage');
+      if(el) el.value = '';
+      const cfg = loadConfig();
+      cfg.canvasBgImage = '';
+      applyAndSave(cfg, 'Background image cleared');
+    });
+    document.getElementById('canvasGlow')?.addEventListener('change', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasGlow = e.target.value;
+      applyAndSave(cfg, 'Canvas glow updated');
+    });
+    document.getElementById('canvasGlowColor1')?.addEventListener('input', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasGlowColor1 = e.target.value || '#ff4fd8';
+      saveConfig(cfg);
+      applyThemeConfig();
+    });
+    document.getElementById('canvasGlowColor2')?.addEventListener('input', (e)=>{
+      const cfg = loadConfig();
+      cfg.canvasGlowColor2 = e.target.value || '#4fe3ff';
+      saveConfig(cfg);
+      applyThemeConfig();
+    });
+    document.getElementById('dockTheme')?.addEventListener('change', (e)=>{
+      const cfg = loadConfig();
+      cfg.dockTheme = e.target.value;
+      applyAndSave(cfg, 'Utility windows style updated');
     });
     document.getElementById('settingsExport')?.addEventListener('click', ()=>{ handleMenuAction('export'); });
     document.getElementById('settingsImport')?.addEventListener('click', ()=>{ handleMenuAction('import'); });

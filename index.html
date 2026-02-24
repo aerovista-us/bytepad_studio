@@ -237,6 +237,58 @@
         </div>
       </section>
       <section class="settings-section">
+        <h3 class="settings-section-title">Canvas background</h3>
+        <div class="settings-row">
+          <label for="canvasBgColor">Background color</label>
+          <select id="canvasBgColor">
+            <option value="default">Default dark</option>
+            <option value="darker">Darker</option>
+            <option value="warm">Warm</option>
+            <option value="cool">Cool</option>
+            <option value="neutral">Neutral</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="canvasBgImage">Background image URL</label>
+          <div class="settings-row-inline">
+            <input type="text" id="canvasBgImage" placeholder="https://… or leave empty" class="settings-input"/>
+            <button type="button" id="canvasBgImageClear" class="btn btn-small">Clear</button>
+          </div>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3 class="settings-section-title">Canvas glow</h3>
+        <div class="settings-row">
+          <label for="canvasGlow">Glow intensity</label>
+          <select id="canvasGlow">
+            <option value="off">Off</option>
+            <option value="subtle">Subtle</option>
+            <option value="medium">Medium</option>
+            <option value="strong">Strong</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="canvasGlowColor1">Glow color 1</label>
+          <input type="color" id="canvasGlowColor1" value="#ff4fd8" class="settings-color"/>
+        </div>
+        <div class="settings-row">
+          <label for="canvasGlowColor2">Glow color 2</label>
+          <input type="color" id="canvasGlowColor2" value="#4fe3ff" class="settings-color"/>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3 class="settings-section-title">Utility windows (docks)</h3>
+        <div class="settings-row">
+          <label for="dockTheme">Dock style</label>
+          <select id="dockTheme">
+            <option value="default">Default</option>
+            <option value="softer">Softer</option>
+            <option value="darker">Darker</option>
+            <option value="accent">Accent tint</option>
+          </select>
+        </div>
+      </section>
+      <section class="settings-section">
         <h3 class="settings-section-title">Backup</h3>
         <div class="settings-row">
           <button type="button" id="settingsExport" class="btn btn-small">Export JSON</button>

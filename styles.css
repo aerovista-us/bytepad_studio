@@ -17,6 +17,16 @@
   --r2:14px;
   --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  /* Theme overrides (set by Settings; glow gradients built in JS) */
+  --theme-canvas-bg: #0b0a10;
+  --theme-canvas-bg-image: none;
+  --theme-canvas-glow-1: radial-gradient(1200px 700px at 20% 10%, rgba(255,79,216,.22), transparent 60%);
+  --theme-canvas-glow-2: radial-gradient(1000px 600px at 80% 30%, rgba(79,227,255,.18), transparent 55%);
+  --theme-dock-bg: rgba(18,14,30,.72);
+  --theme-dock-bar-bg: rgba(10,8,16,.78);
+  --theme-dock-border: rgba(255,255,255,.06);
+  --theme-dock-accent: rgba(255,79,216,.35);
+  --theme-dock-btn-hover: rgba(255,79,216,.20);
 }
 
 *{box-sizing:border-box}
@@ -177,7 +187,7 @@ a:hover{text-decoration:underline}
   border-radius: 6px;
 }
 
-/* Full-screen canvas stage */
+/* Full-screen canvas stage (themeable) */
 .canvas-stage{
   position: fixed;
   top: 76px;
@@ -185,7 +195,11 @@ a:hover{text-decoration:underline}
   right: 0;
   bottom: 0;
   overflow: hidden;
-  background: var(--bg1);
+  background-color: var(--theme-canvas-bg);
+  background-image: var(--theme-canvas-glow-1), var(--theme-canvas-glow-2), var(--theme-canvas-bg-image);
+  background-size: 100% 100%, 100% 100%, cover;
+  background-position: 0 0, 0 0, center;
+  background-repeat: no-repeat, no-repeat, no-repeat;
 }
 
 .board{
@@ -354,6 +368,31 @@ a:hover{text-decoration:underline}
   color: var(--text);
   font-size: 12px;
 }
+.settings-row-inline{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.settings-input{
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg1);
+  color: var(--text);
+  font-size: 12px;
+}
+.settings-color{
+  width: 36px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
 .settings-storage-info{
   font-size: 11px;
   color: var(--muted);
@@ -366,11 +405,11 @@ a:hover{text-decoration:underline}
 .note.smokeSilver{ background: #d7dde5; color: #222; }
 .note.blackout{ background: #121212; color: #f5f5f5; }
 
-/* Floating Dock Windows */
+/* Floating Dock Windows (themeable) */
 .dockwin{
   position: fixed;
-  background: var(--panel-ui);
-  border: 1px solid rgba(255,255,255,.06);
+  background: var(--theme-dock-bg);
+  border: 1px solid var(--theme-dock-border);
   border-radius: var(--r2);
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
@@ -408,8 +447,8 @@ a:hover{text-decoration:underline}
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: rgba(10,8,16,.78);
-  border-bottom: 1px solid var(--border);
+  background: var(--theme-dock-bar-bg);
+  border-bottom: 1px solid var(--theme-dock-border);
   cursor: move;
   user-select: none;
 }
@@ -442,8 +481,8 @@ a:hover{text-decoration:underline}
 }
 
 .dockbtn:hover{
-  background: rgba(255,79,216,.20);
-  border-color: rgba(255,79,216,.35);
+  background: var(--theme-dock-btn-hover);
+  border-color: var(--theme-dock-accent);
 }
 
 .dockbody{
