@@ -296,11 +296,44 @@
         </div>
       </section>
       <section class="settings-section">
+        <h3 class="settings-section-title">Image editing</h3>
+        <div class="settings-row">
+          <label for="removeBgApiKey">Remove.bg API key</label>
+          <input type="password" id="removeBgApiKey" placeholder="Optional — for Remove background" class="settings-input" autocomplete="off"/>
+        </div>
+        <p class="settings-hint">Add a key from remove.bg to use “Remove background” on image notes. Free tier: 50 calls/month.</p>
+      </section>
+      <section class="settings-section">
         <h3 class="settings-section-title">Storage</h3>
         <p id="storageInfo" class="settings-storage-info">—</p>
       </section>
     </div>
   </aside>
+
+  <!-- Draw on image modal -->
+  <div id="drawOnImageModal" class="modal" aria-hidden="true">
+    <div class="modal-content draw-modal-content">
+      <div class="modal-header">
+        <h2>Draw on image</h2>
+        <button type="button" id="drawModalClose" class="iconbtn" aria-label="Close">×</button>
+      </div>
+      <div class="draw-modal-body">
+        <div class="draw-toolbar">
+          <label>Brush</label>
+          <input type="range" id="drawBrushSize" min="2" max="40" value="8" class="draw-slider"/>
+          <span id="drawBrushSizeVal">8</span>
+          <label>Color</label>
+          <input type="color" id="drawBrushColor" value="#ff4fd8" class="settings-color"/>
+          <button type="button" id="drawClear" class="btn btn-small">Clear drawing</button>
+          <button type="button" id="drawSave" class="btn btn-small primary">Save</button>
+          <button type="button" id="drawCancel" class="btn btn-small">Cancel</button>
+        </div>
+        <div class="draw-canvas-wrap">
+          <canvas id="drawCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- About Modal -->
   <div id="aboutModal" class="modal">

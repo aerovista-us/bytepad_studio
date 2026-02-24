@@ -67,7 +67,8 @@
     canvasGlow: 'medium',
     canvasGlowColor1: '#ff4fd8',
     canvasGlowColor2: '#4fe3ff',
-    dockTheme: 'default'
+    dockTheme: 'default',
+    removeBgApiKey: ''
   };
   function loadConfig(){
     return loadState('config', THEME_DEFAULTS);
@@ -2441,6 +2442,148 @@
       toast('Removed ' + unused.length + ' unused assets');
     }
 
+    // Draw on image modal
+    let drawModalNote = null;
+    function openDrawOnImageModal(note){
+      if(!note || note.dataset.assetKind !== 'image' || !note.dataset.assetId) return;
+      const modal = document.getElementById('drawOnImageModal');
+      const canvas = document.getElementById('drawCanvas');
+      if(!modal || !canvas) return;
+      drawModalNote = note;
+      modal.classList.add('visible');
+      modal.setAttribute('aria-hidden', 'false');
+      const ctx = canvas.getContext('2d');
+      let lastX = 0, lastY = 0, isDrawing = false;
+
+      let baseDataUrl = null;
+      function drawImageToCanvas(img){
+        const max = 800;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if(w > max || h > max){
+          if(w > h){ h = (h * max) / w; w = max; } else { w = (w * max) / h; h = max; }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        baseDataUrl = canvas.toDataURL('image/png');
+      }
+
+      function redrawBase(){
+        if(!baseDataUrl) return;
+        const img = new Image();
+        img.onload = ()=>{ ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+        img.src = baseDataUrl;
+      }
+
+      idbGet(note.dataset.assetId).then(rec=>{
+        if(!rec || !rec.blob){ toast('Image not found'); return; }
+        const url = URL.createObjectURL(rec.blob);
+        const img = new Image();
+        img.onload = ()=>{
+          drawImageToCanvas(img);
+          URL.revokeObjectURL(url);
+        };
+        img.onerror = ()=>{ URL.revokeObjectURL(url); toast('Failed to load image'); };
+        img.src = url;
+      }).catch(()=> toast('Failed to load image'));
+
+      const brushSize = document.getElementById('drawBrushSize');
+      const brushSizeVal = document.getElementById('drawBrushSizeVal');
+      const brushColor = document.getElementById('drawBrushColor');
+      brushSize.oninput = ()=>{ brushSizeVal.textContent = brushSize.value; };
+      brushSizeVal.textContent = brushSize.value;
+
+      function getPos(e){
+        const r = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / r.width, scaleY = canvas.height / r.height;
+        return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+      }
+      canvas.onpointerdown = (e)=>{
+        isDrawing = true;
+        const p = getPos(e);
+        lastX = p.x; lastY = p.y;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, parseInt(brushSize.value,10)/2, 0, Math.PI*2);
+        ctx.fillStyle = brushColor.value;
+        ctx.fill();
+      };
+      canvas.onpointermove = (e)=>{
+        if(!isDrawing) return;
+        const p = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(p.x, p.y);
+        ctx.strokeStyle = brushColor.value;
+        ctx.lineWidth = parseInt(brushSize.value,10);
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        lastX = p.x; lastY = p.y;
+      };
+      canvas.onpointerup = ()=>{ isDrawing = false; };
+      canvas.onpointerleave = ()=>{ isDrawing = false; };
+
+      document.getElementById('drawClear').onclick = ()=>{ redrawBase(); toast('Drawing cleared'); };
+      document.getElementById('drawSave').onclick = ()=>{
+        canvas.toBlob(async (blob)=>{
+          if(!blob || !drawModalNote) return;
+          const assetId = drawModalNote.dataset.assetId;
+          const name = drawModalNote.dataset.assetName || 'image';
+          await idbPut(assetId, { blob, mime: 'image/png', name, t: Date.now() });
+          renderAssetFromBlob(drawModalNote, blob, 'image', 'image/png', name);
+          pushHistoryDebounced();
+          renderLayers();
+          closeDrawModal();
+          toast('Drawing saved');
+        }, 'image/png');
+      };
+      document.getElementById('drawCancel').onclick = ()=>{ closeDrawModal(); };
+      document.getElementById('drawModalClose').onclick = ()=>{ closeDrawModal(); };
+      modal.onclick = (e)=>{ if(e.target === modal) closeDrawModal(); };
+      const onEscape = (e)=>{ if(e.key === 'Escape') closeDrawModal(); };
+      document.addEventListener('keydown', onEscape);
+      function closeDrawModal(){
+        document.removeEventListener('keydown', onEscape);
+        modal.onclick = null;
+        modal.classList.remove('visible');
+        modal.setAttribute('aria-hidden', 'true');
+        drawModalNote = null;
+        canvas.onpointerdown = canvas.onpointermove = canvas.onpointerup = canvas.onpointerleave = null;
+      }
+    }
+
+    async function removeBackgroundFromNote(note){
+      if(!note || note.dataset.assetKind !== 'image' || !note.dataset.assetId) return;
+      const apiKey = (loadConfig().removeBgApiKey || '').trim();
+      if(!apiKey){ toast('Add Remove.bg API key in Settings → Image editing'); return; }
+      try{
+        const rec = await idbGet(note.dataset.assetId);
+        if(!rec || !rec.blob){ toast('Image not found'); return; }
+        toast('Removing background…');
+        const form = new FormData();
+        form.append('size', 'auto');
+        form.append('image_file', rec.blob);
+        const res = await fetch('https://api.remove.bg/v1.0/removebg', {
+          method: 'POST',
+          headers: { 'X-Api-Key': apiKey },
+          body: form
+        });
+        if(!res.ok){ const t = await res.text(); throw new Error(res.status + ' ' + (t || res.statusText)); }
+        const buf = await res.arrayBuffer();
+        const blob = new Blob([buf], { type: 'image/png' });
+        const name = (note.dataset.assetName || 'image').replace(/\.[^.]+$/, '') + '-nobg.png';
+        await idbPut(note.dataset.assetId, { blob, mime: 'image/png', name, t: Date.now() });
+        note.dataset.assetMime = 'image/png';
+        note.dataset.assetName = name;
+        renderAssetFromBlob(note, blob, 'image', 'image/png', name);
+        pushHistoryDebounced();
+        renderLayers();
+        toast('Background removed');
+      } catch(err){
+        console.warn(err);
+        toast('Remove background failed: ' + (err.message || 'check API key'));
+      }
+    }
+
     // Settings panel
     function openSettingsPanel(){
       const panel = document.getElementById('settingsPanel');
@@ -2462,6 +2605,8 @@
       if(canvasGlowColor2) canvasGlowColor2.value = cfg.canvasGlowColor2 || '#4fe3ff';
       const dockTheme = document.getElementById('dockTheme');
       if(dockTheme) dockTheme.value = cfg.dockTheme || 'default';
+      const removeBgApiKey = document.getElementById('removeBgApiKey');
+      if(removeBgApiKey) removeBgApiKey.value = cfg.removeBgApiKey || '';
       const storageEl = document.getElementById('storageInfo');
       if(storageEl){
         let total = 0;
@@ -2540,6 +2685,16 @@
       cfg.dockTheme = e.target.value;
       applyAndSave(cfg, 'Utility windows style updated');
     });
+    document.getElementById('removeBgApiKey')?.addEventListener('input', (e)=>{
+      const cfg = loadConfig();
+      cfg.removeBgApiKey = (e.target.value || '').trim();
+      saveConfig(cfg);
+    });
+    document.getElementById('removeBgApiKey')?.addEventListener('blur', (e)=>{
+      const cfg = loadConfig();
+      cfg.removeBgApiKey = (e.target.value || '').trim();
+      saveConfig(cfg);
+    });
     document.getElementById('settingsExport')?.addEventListener('click', ()=>{ handleMenuAction('export'); });
     document.getElementById('settingsImport')?.addEventListener('click', ()=>{ handleMenuAction('import'); });
     document.getElementById('btnSettings')?.addEventListener('click', openSettingsPanel);
@@ -2617,6 +2772,9 @@
             renderLayers();
             toast('Deleted');
           }},
+          '---',
+          { label: 'Draw on image', disabled: note.dataset.assetKind !== 'image', action: () => { openDrawOnImageModal(note); }},
+          { label: 'Remove background', disabled: note.dataset.assetKind !== 'image', action: () => { removeBackgroundFromNote(note); }},
           '---',
           { label: 'Remove Image', disabled: !note.classList.contains('has-image'), action: () => {
             const body = note.querySelector('.body');
