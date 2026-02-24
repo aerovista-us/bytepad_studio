@@ -65,6 +65,10 @@
           <span class="menu-check" id="snapCheck">✓</span>
         </div>
         <div class="menu-divider"></div>
+        <div class="menu-option" data-action="toggleDockTemplates">Templates panel</div>
+        <div class="menu-option" data-action="toggleDockTools">Tools panel</div>
+        <div class="menu-option" data-action="toggleDockLayers">Layers panel</div>
+        <div class="menu-divider"></div>
         <div class="menu-option" data-action="showAllToolbars">Show All Toolbars</div>
         <div class="menu-option" data-action="dockLock">
           <span>Dock Lock</span>
@@ -129,19 +133,19 @@
         </div>
         <div class="dock-divider" style="margin:8px 0; border-top:1px solid var(--border)"></div>
         <div class="chip" style="margin-bottom:4px; font-size:10px">Structured</div>
-        <div class="item" draggable="true" data-template='{"type":"note","color":"pink","title":"Task","text":"<p><b>Task</b></p><ul><li>Do this</li><li>Then this</li></ul><p>Owner: —</p>","w":260,"h":200}'>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"pink","title":"Task","text":"<p><b>Task</b></p><ul><li>□ Do this</li><li>□ Then this</li><li>□ Done</li></ul><p><b>Owner</b>: —</p><p><b>Due</b>: —</p>","w":260,"h":220}'>
           <div class="mini"></div>
-          <div class="meta"><strong>Task</strong><small>checklist + owner</small></div>
+          <div class="meta"><strong>Task</strong><small>checklist · owner · due</small></div>
           <span class="chip drag">drag</span>
         </div>
-        <div class="item" draggable="true" data-template='{"type":"note","color":"blue","title":"Meeting","text":"<p><b>Agenda</b></p><ul><li>—</li></ul><p><b>Action items</b></p><ul><li>—</li></ul>","w":280,"h":220}'>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"blue","title":"Meeting","text":"<p><b>Agenda</b></p><ol><li>—</li><li>—</li></ol><p><b>Action items</b></p><ul><li>—</li><li>—</li></ul><p><b>Next</b>: —</p>","w":300,"h":260}'>
           <div class="mini"></div>
-          <div class="meta"><strong>Meeting</strong><small>agenda + actions</small></div>
+          <div class="meta"><strong>Meeting</strong><small>agenda · actions · next</small></div>
           <span class="chip drag">drag</span>
         </div>
-        <div class="item" draggable="true" data-template='{"type":"note","color":"green","title":"Media","text":"<p>Drop image, audio or video here.</p>","w":320,"h":200}'>
+        <div class="item" draggable="true" data-template='{"type":"note","color":"green","title":"Media","text":"<p>Drop image, audio or video here. The whole note body is the drop zone.</p>","w":320,"h":220}'>
           <div class="mini"></div>
-          <div class="meta"><strong>Media</strong><small>drop files</small></div>
+          <div class="meta"><strong>Media</strong><small>drop zone note</small></div>
           <span class="chip drag">drag</span>
         </div>
       </div>

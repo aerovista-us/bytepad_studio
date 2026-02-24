@@ -597,10 +597,18 @@
   // ============================================
   let dockLockEnabled = false;
   const defaultDockPositions = {
-    dockTemplates: { left: 18, top: 50, width: 280, height: 400 },
-    dockTools: { left: null, right: 18, top: 50, width: 240, height: 300 },
-    dockLayers: { left: null, right: 18, top: 360, width: 240, height: 300 }
+    dockTemplates: { left: 18, top: 50, width: 280, height: 400, hidden: true },
+    dockTools: { left: null, right: 18, top: 50, width: 240, height: 300, hidden: true },
+    dockLayers: { left: null, right: 18, top: 360, width: 240, height: 300, hidden: true }
   };
+
+  function toggleDockVisibility(dockId){
+    const win = document.getElementById(dockId);
+    if(!win) return;
+    win.classList.toggle('hidden');
+    saveDockPositions();
+    toast(win.classList.contains('hidden') ? 'Panel closed' : 'Panel opened');
+  }
 
   function enableDockWindows(){
     const windows = document.querySelectorAll('.dockwin');
@@ -1023,6 +1031,15 @@
         break;
       case 'dockLock':
         toggleDockLock();
+        break;
+      case 'toggleDockTemplates':
+        toggleDockVisibility('dockTemplates');
+        break;
+      case 'toggleDockTools':
+        toggleDockVisibility('dockTools');
+        break;
+      case 'toggleDockLayers':
+        toggleDockVisibility('dockLayers');
         break;
       case 'showAllToolbars':
         showAllToolbars();
@@ -1585,7 +1602,8 @@
           y: parseFloat(n.style.top||'0'),
           w: parseFloat(n.style.width||'220'),
           h: parseFloat(n.style.height||'170'),
-          z: parseInt(n.style.zIndex||'0',10)
+          z: parseInt(n.style.zIndex||'0',10),
+          minimized: n.classList.contains('minimized')
         };
       });
       return { v:4, items };
@@ -1847,6 +1865,7 @@
       n.style.height = h+'px';
       n.style.zIndex = String(opts.z||10);
 
+      const NOTE_THEMES = ['yellow','pink','blue','green','purple','classicYellow','whiteout','smokeSilver','blackout'];
       n.innerHTML = `
         <div class="head" title="Drag to move (or hold Alt and drag anywhere)">
           <div class="grabstrip" aria-hidden="true"></div>
@@ -1857,8 +1876,9 @@
               <button type="button" class="iconbtn tag-add" title="Add tag">+</button>
               <input type="text" class="tag-input" placeholder="tag…" maxlength="32" style="display:none"/>
             </div>
-            <span class="chip">${color}</span>
-            <button class="iconbtn" title="delete">×</button>
+            <span class="chip note-theme-chip" title="Click to change color">${color}</span>
+            <button type="button" class="iconbtn note-minimize-btn" title="Minimize note">−</button>
+            <button type="button" class="iconbtn note-delete-btn" title="Delete note">×</button>
           </div>
         </div>
         <div class="body">
@@ -1867,8 +1887,19 @@
         </div>
         <div class="resizer" title="resize"></div>
       `;
+      if(opts.minimized) n.classList.add('minimized');
       n.querySelector('.body-text').innerHTML = sanitizeRichText(text);
       renderNoteTags(n);
+
+      function updateDropZoneEmpty(){
+        const body = n.querySelector('.body');
+        const media = n.querySelector('.media');
+        const textEl = n.querySelector('.body-text');
+        const hasMedia = media && media.children.length > 0;
+        const hasText = textEl && (textEl.textContent || '').trim().length > 0;
+        if(body) body.classList.toggle('drop-zone-empty', !hasMedia && !hasText);
+      }
+      updateDropZoneEmpty();
 
       (function setupTagAdd(){
         const addBtn = n.querySelector('.tag-add');
@@ -2034,32 +2065,89 @@
       // Set up input handlers
       if(body.querySelector('.body-text')){
         body.querySelector('.body-text').addEventListener('input', ()=>{
+          updateDropZoneEmpty();
           pushHistoryDebounced();
           renderLayers();
         });
       } else {
         body.addEventListener('input', ()=>{
+          updateDropZoneEmpty();
           pushHistoryDebounced();
           renderLayers();
         });
       }
 
-      // Image drop on note
+      // Image drop on note (full body is drop zone; visual feedback)
       body.addEventListener('dragover', (e)=>{
         e.preventDefault();
         e.stopPropagation();
         body.style.outline = '2px dashed rgba(255,79,216,.50)';
+        body.classList.add('drag-over');
       });
       body.addEventListener('dragleave', (e)=>{
         body.style.outline = '';
+        body.classList.remove('drag-over');
       });
       body.addEventListener('drop', (e)=>{
         body.style.outline = '';
+        body.classList.remove('drag-over');
         handleImageDrop(e, n);
+        setTimeout(updateDropZoneEmpty, 0);
       });
 
-      n.querySelector('.iconbtn').addEventListener('click', (e)=>{
+      // Theme/color picker (click chip)
+      (function setupThemeChip(){
+        const chip = n.querySelector('.note-theme-chip');
+        if(!chip) return;
+        chip.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          let pop = n.querySelector('.note-theme-dropdown');
+          if(pop){ pop.remove(); return; }
+          pop = document.createElement('div');
+          pop.className = 'note-theme-dropdown';
+          NOTE_THEMES.forEach(th=>{
+            const opt = document.createElement('button');
+            opt.type = 'button';
+            opt.className = 'note-theme-opt';
+            opt.textContent = th;
+            opt.addEventListener('click', (e)=>{
+              e.stopPropagation();
+              const prev = n.className.match(/\b(yellow|pink|blue|green|purple|classicYellow|whiteout|smokeSilver|blackout)\b/);
+              if(prev) n.classList.remove(prev[0]);
+              n.classList.add(th);
+              chip.textContent = th;
+              pop.remove();
+              pushHistoryDebounced();
+              document.removeEventListener('click', closeThemeDropdown);
+            });
+            pop.appendChild(opt);
+          });
+          n.appendChild(pop);
+          const nr = n.getBoundingClientRect();
+          const cr = chip.getBoundingClientRect();
+          pop.style.position = 'absolute';
+          pop.style.left = (cr.left - nr.left) + 'px';
+          pop.style.top = (cr.bottom - nr.top + 4) + 'px';
+          const closeThemeDropdown = ()=>{
+            const p = n.querySelector('.note-theme-dropdown');
+            if(p) p.remove();
+            document.removeEventListener('click', closeThemeDropdown);
+          };
+          setTimeout(()=> document.addEventListener('click', closeThemeDropdown), 0);
+        });
+      })();
+
+      n.querySelector('.note-minimize-btn').addEventListener('click', (e)=>{
         e.stopPropagation();
+        e.preventDefault();
+        n.classList.toggle('minimized');
+        pushHistoryDebounced();
+        renderLayers();
+      });
+
+      n.querySelector('.note-delete-btn').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        e.preventDefault();
         const noteId = n.dataset.id;
         const assetId = n.dataset.assetId;
         deleteConnectionsForNote(noteId, connections);
